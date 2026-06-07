@@ -1,5 +1,7 @@
 # ⚡ Cloud Thrift — AWS Cost Optimization Bot
 
+file:///C:/Users/kavee/Downloads/cloud-thrift-repo/cloud-thrift/index.html#pricing
+
 > Automated detection and elimination of AWS cloud waste using Boto3 + Lambda + CloudWatch.  
 > Reduces simulated monthly cloud spend by **~30%** with zero manual effort.
 
