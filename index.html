@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cloud Thrift — AWS Lambda Bot That Cuts Cloud Costs by ~30%</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --orange: #f5a623;
+      --orange-dark: #d4891a;
+      --orange-glow: rgba(245,166,35,0.18);
+      --bg: #0d0f12;
+      --bg2: #13161d;
+      --bg3: #1a1d26;
+      --card: #181b24;
+      --card2: #1e2130;
+      --border: rgba(245,166,35,0.15);
+      --text: #e8eaf0;
+      --muted: #7a7f96;
+      --white: #ffffff;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 40px; height: 60px;
+      background: rgba(13,15,18,0.92);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-logo-icon {
+      width: 36px; height: 36px; background: var(--orange); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center; font-size: 18px;
+    }
+    .nav-logo-text { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 17px; color: var(--white); }
+    .nav-logo-text span { color: var(--orange); }
+    .nav-links { display: flex; align-items: center; gap: 32px; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 500; transition: color .2s; }
+    .nav-links a:hover { color: var(--white); }
+    .btn-primary {
+      background: var(--orange); color: #0d0f12;
+      border: none; border-radius: 8px; padding: 9px 20px;
+      font-family: 'Syne', sans-serif; font-weight: 700; font-size: 14px;
+      cursor: pointer; transition: background .2s, transform .15s;
+      text-decoration: none; display: inline-block;
+    }
+    .btn-primary:hover { background: var(--orange-dark); transform: translateY(-1px); }
+
+    /* ── HERO ── */
+    #hero {
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 100px 20px 60px; text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .hero-bg {
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(ellipse 60% 40% at 50% 0%, rgba(245,166,35,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-star {
+      position: absolute; top: -40px; left: -60px; width: 320px; opacity: .45;
+      pointer-events: none;
+    }
+    .live-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(245,166,35,0.1); border: 1px solid var(--border);
+      border-radius: 999px; padding: 6px 16px; font-size: 13px; font-weight: 500;
+      color: var(--orange); margin-bottom: 30px;
+    }
+    .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--orange); animation: pulse 1.8s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+    .hero-title {
+      font-family: 'Syne', sans-serif; font-size: clamp(52px, 9vw, 110px);
+      font-weight: 800; color: var(--orange); line-height: .95;
+      letter-spacing: -2px; margin-bottom: 18px;
+    }
+    .hero-sub {
+      font-size: clamp(17px, 2vw, 22px); color: var(--muted); margin-bottom: 14px;
+      font-weight: 400;
+    }
+    .hero-desc { font-size: 15px; color: var(--muted); max-width: 560px; line-height: 1.7; margin-bottom: 38px; }
+    .hero-desc strong { color: var(--orange); font-weight: 600; }
+    .hero-btns { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; margin-bottom: 60px; }
+    .btn-secondary {
+      background: transparent; color: var(--white);
+      border: 1px solid rgba(255,255,255,0.2); border-radius: 8px;
+      padding: 11px 22px; font-family: 'Syne', sans-serif; font-weight: 600;
+      font-size: 14px; cursor: pointer; transition: border-color .2s, background .2s;
+      text-decoration: none; display: inline-flex; align-items: center; gap: 8px;
+    }
+    .btn-secondary:hover { border-color: var(--orange); background: var(--orange-glow); }
+    .btn-primary-lg {
+      padding: 12px 26px; font-size: 15px;
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+    .savings-block { position: relative; }
+    .savings-label { font-size: 11px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+    .savings-num {
+      font-family: 'Space Mono', monospace; font-size: clamp(36px,6vw,64px);
+      font-weight: 700; color: var(--orange);
+      text-shadow: 0 0 40px rgba(245,166,35,0.5);
+    }
+    .savings-caption { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+    /* ── STATS ── */
+    #stats {
+      background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+      padding: 48px 40px;
+    }
+    .stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 20px; max-width: 900px; margin: 0 auto; text-align: center; }
+    .stat-num { font-family: 'Space Mono', monospace; font-size: 36px; font-weight: 700; color: var(--orange); }
+    .stat-label { font-size: 13px; color: var(--muted); margin-top: 4px; }
+
+    /* ── SECTION LABELS ── */
+    .section-label { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--orange); font-weight: 600; margin-bottom: 16px; }
+    .section-title { font-family: 'Syne', sans-serif; font-size: clamp(28px,4vw,44px); font-weight: 800; color: var(--white); margin-bottom: 16px; }
+    .section-desc { color: var(--muted); font-size: 16px; max-width: 540px; margin: 0 auto; line-height: 1.65; }
+
+    /* ── HOW IT WORKS ── */
+    #how { padding: 100px 40px; text-align: center; background: var(--bg); }
+    .steps-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; max-width: 1100px; margin: 60px auto 0; }
+    .step-card {
+      background: var(--card); border: 1px solid var(--border); border-top: 3px solid var(--orange);
+      border-radius: 14px; padding: 32px; text-align: left; position: relative;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .step-card:hover { transform: translateY(-4px); box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+    .step-num { font-family: 'Space Mono', monospace; font-size: 56px; font-weight: 700; color: rgba(245,166,35,0.12); position: absolute; top: 16px; right: 20px; line-height: 1; }
+    .step-icon { width: 48px; height: 48px; background: rgba(245,166,35,0.12); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 18px; }
+    .step-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 18px; color: var(--white); margin-bottom: 10px; }
+    .step-desc { font-size: 14px; color: var(--muted); line-height: 1.65; margin-bottom: 14px; }
+    .step-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--orange); font-weight: 600; }
+
+    /* ── FEATURES ── */
+    #features { padding: 100px 40px; text-align: center; background: var(--bg2); }
+    .features-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; max-width: 1100px; margin: 60px auto 0; }
+    .feat-card {
+      background: var(--card2); border: 1px solid var(--border); border-radius: 14px;
+      padding: 28px; text-align: left; transition: border-color .2s, transform .2s;
+    }
+    .feat-card:hover { border-color: var(--orange); transform: translateY(-3px); }
+    .feat-icon { width: 44px; height: 44px; background: rgba(245,166,35,0.12); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 16px; }
+    .feat-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; color: var(--white); margin-bottom: 8px; }
+    .feat-desc { font-size: 13.5px; color: var(--muted); line-height: 1.6; margin-bottom: 12px; }
+    .feat-tag { display: inline-block; background: rgba(245,166,35,0.1); border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; font-size: 11px; color: var(--orange); }
+
+    /* ── ARCHITECTURE ── */
+    #arch { padding: 100px 40px; text-align: center; background: var(--bg); }
+    .arch-diagram {
+      max-width: 900px; margin: 60px auto 0;
+      background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+      padding: 40px; overflow-x: auto;
+    }
+    .arch-row { display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 0; }
+    .arch-box {
+      background: var(--card2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 14px 16px; min-width: 120px; text-align: center;
+    }
+    .arch-box.center { border-color: var(--orange); background: rgba(245,166,35,0.08); }
+    .arch-box-icon { font-size: 22px; margin-bottom: 6px; }
+    .arch-box-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 13px; color: var(--white); }
+    .arch-box-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .arch-arrow { color: var(--orange); font-size: 18px; font-weight: 700; }
+    .arch-col { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 16px; }
+    .arch-legend { display: flex; gap: 28px; justify-content: center; margin-top: 28px; flex-wrap: wrap; }
+    .arch-legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+    .legend-line { width: 28px; height: 2px; background: var(--orange); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--orange); }
+    .legend-lock { font-size: 13px; }
+
+    /* ── PRICING ── */
+    #pricing { padding: 100px 40px; text-align: center; background: var(--bg2); }
+    .pricing-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; max-width: 1000px; margin: 60px auto 0; align-items: start; }
+    .pricing-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+      padding: 32px; text-align: left; position: relative;
+    }
+    .pricing-card.popular {
+      border-color: var(--orange);
+      box-shadow: 0 0 40px rgba(245,166,35,0.12);
+    }
+    .popular-badge {
+      position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+      background: var(--orange); color: #0d0f12; font-size: 11px; font-weight: 800;
+      font-family: 'Syne', sans-serif; letter-spacing: 1px; padding: 4px 14px; border-radius: 999px;
+    }
+    .plan-name { font-size: 11px; letter-spacing: 2px; font-weight: 700; color: var(--orange); text-transform: uppercase; margin-bottom: 12px; }
+    .plan-price { font-family: 'Space Mono', monospace; font-size: 44px; font-weight: 700; color: var(--white); }
+    .plan-price span { font-size: 16px; color: var(--muted); font-weight: 400; }
+    .plan-limit { font-size: 13px; color: var(--muted); margin: 6px 0 22px; }
+    .plan-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+    .plan-features li { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--text); }
+    .plan-features li.no { color: var(--muted); }
+    .check { color: var(--orange); font-weight: 700; }
+    .cross { color: #444; }
+    .plan-btn-outline {
+      display: block; width: 100%; padding: 11px; text-align: center;
+      border: 1px solid rgba(255,255,255,0.15); border-radius: 8px;
+      color: var(--white); font-family: 'Syne', sans-serif; font-weight: 700;
+      font-size: 14px; text-decoration: none; cursor: pointer;
+      background: transparent; transition: border-color .2s, background .2s;
+    }
+    .plan-btn-outline:hover { border-color: var(--orange); background: var(--orange-glow); }
+    .plan-btn-primary {
+      display: block; width: 100%; padding: 12px; text-align: center;
+      background: var(--orange); color: #0d0f12; border: none; border-radius: 8px;
+      font-family: 'Syne', sans-serif; font-weight: 800; font-size: 14px;
+      text-decoration: none; cursor: pointer; transition: background .2s;
+    }
+    .plan-btn-primary:hover { background: var(--orange-dark); }
+
+    /* ── TESTIMONIALS ── */
+    #testimonials { padding: 100px 40px; text-align: center; background: var(--bg); }
+    .testi-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 24px; max-width: 1100px; margin: 60px auto 0; }
+    .testi-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+      padding: 28px; text-align: left; transition: border-color .2s;
+    }
+    .testi-card:hover { border-color: rgba(245,166,35,0.3); }
+    .stars { color: var(--orange); font-size: 16px; margin-bottom: 14px; letter-spacing: 2px; }
+    .testi-quote { font-size: 14px; color: var(--text); line-height: 1.7; margin-bottom: 20px; font-style: italic; }
+    .testi-quote::before { content: '"'; font-size: 26px; color: var(--orange); line-height: 0; vertical-align: -8px; margin-right: 4px; }
+    .testi-author { display: flex; align-items: center; gap: 12px; }
+    .author-avatar {
+      width: 38px; height: 38px; border-radius: 50%; background: var(--orange);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif; font-weight: 800; font-size: 13px; color: #0d0f12;
+      flex-shrink: 0;
+    }
+    .author-name { font-weight: 600; font-size: 14px; color: var(--white); }
+    .author-role { font-size: 12px; color: var(--muted); }
+    .author-tag { margin-left: auto; background: rgba(245,166,35,0.1); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; font-size: 11px; color: var(--orange); font-family: 'Space Mono', monospace; }
+
+    /* ── FAQ ── */
+    #faq { padding: 100px 40px; text-align: center; background: var(--bg2); }
+    .faq-list { max-width: 720px; margin: 60px auto 0; display: flex; flex-direction: column; gap: 12px; text-align: left; }
+    .faq-item { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .faq-q {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 22px; cursor: pointer; font-weight: 500; font-size: 15px; color: var(--white);
+      transition: background .2s; user-select: none;
+    }
+    .faq-q:hover { background: rgba(245,166,35,0.04); }
+    .faq-icon { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 14px; color: var(--orange); transition: transform .3s; }
+    .faq-item.open .faq-icon { transform: rotate(45deg); background: var(--orange); color: #0d0f12; border-color: var(--orange); }
+    .faq-a { max-height: 0; overflow: hidden; transition: max-height .4s ease, padding .3s; padding: 0 22px; font-size: 14px; color: var(--muted); line-height: 1.75; }
+    .faq-item.open .faq-a { max-height: 300px; padding: 0 22px 18px; }
+    .faq-a code { background: rgba(245,166,35,0.12); color: var(--orange); padding: 2px 6px; border-radius: 4px; font-family: 'Space Mono', monospace; font-size: 12px; }
+
+    /* ── FOOTER ── */
+    footer { background: var(--bg3); border-top: 1px solid var(--border); padding: 60px 40px 30px; }
+    .footer-inner { max-width: 1100px; margin: 0 auto; }
+    .footer-top { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 40px; margin-bottom: 48px; }
+    .footer-brand p { font-size: 14px; color: var(--muted); line-height: 1.7; margin: 12px 0 18px; max-width: 260px; }
+    .footer-socials { display: flex; gap: 10px; }
+    .social-btn {
+      width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted); font-size: 15px; cursor: pointer; text-decoration: none;
+      transition: border-color .2s, color .2s;
+    }
+    .social-btn:hover { border-color: var(--orange); color: var(--orange); }
+    .footer-col-title { font-size: 10px; letter-spacing: 2px; font-weight: 700; color: var(--muted); text-transform: uppercase; margin-bottom: 16px; }
+    .footer-col a { display: block; color: var(--muted); font-size: 14px; text-decoration: none; margin-bottom: 10px; transition: color .2s; }
+    .footer-col a:hover { color: var(--white); }
+    .footer-bottom { border-top: 1px solid var(--border); padding-top: 22px; display: flex; align-items: center; justify-content: space-between; flex-wrap: gap; gap: 12px; }
+    .footer-copy { font-size: 12px; color: var(--muted); }
+    .footer-badges { display: flex; gap: 12px; align-items: center; }
+    .badge-pill { font-size: 11px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border); color: var(--orange); font-weight: 600; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      nav { padding: 0 20px; }
+      .nav-links { display: none; }
+      .stats-grid { grid-template-columns: repeat(2,1fr); }
+      .steps-grid, .features-grid, .pricing-grid, .testi-grid { grid-template-columns: 1fr; }
+      .footer-top { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 560px) {
+      .footer-top { grid-template-columns: 1fr; }
+      .stats-grid { grid-template-columns: repeat(2,1fr); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-icon">🚀</div>
+    <div class="nav-logo-text">Cloud <span>Thrift</span></div>
+  </a>
+  <div class="nav-links">
+    <a href="#how">How It Works</a>
+    <a href="#features">Features</a>
+    <a href="#arch">Architecture</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#faq">FAQ</a>
+  </div>
+  <a href="#pricing" class="btn-primary">Get Started</a>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-bg"></div>
+  <div class="live-badge"><span class="live-dot"></span> Live — Saving teams money right now</div>
+  <h1 class="hero-title">Cloud Thrift</h1>
+  <p class="hero-sub">AWS Lambda Bot That Automatically Cuts Your Cloud Costs by ~30%</p>
+  <p class="hero-desc">Serverless. Always-on. Zero-config. Cloud Thrift scans your AWS infrastructure, identifies waste, and auto-optimizes — saving the average team <strong>$8,400/month</strong>.</p>
+  <div class="hero-btns">
+    <a href="#pricing" class="btn-primary btn-primary-lg">🚀 Start Free Trial</a>
+    <a href="#how" class="btn-secondary">▶ See How It Works</a>
+  </div>
+  <div class="savings-block">
+    <div class="savings-label">$ Total Savings Across All Accounts</div>
+    <div class="savings-num" id="counter">$12,848,543</div>
+    <div class="savings-caption">and counting — updated in real time</div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section id="stats">
+  <div class="stats-grid">
+    <div><div class="stat-num">2400</div><div class="stat-label">AWS Accounts Connected</div></div>
+    <div><div class="stat-num">31%</div><div class="stat-label">Average Cost Reduction</div></div>
+    <div><div class="stat-num">$8400/mo</div><div class="stat-label">Avg Monthly Savings</div></div>
+    <div><div class="stat-num">99.9%</div><div class="stat-label">Uptime SLA</div></div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how">
+  <div class="section-label">PROCESS</div>
+  <h2 class="section-title">Up and Running in 90 Seconds</h2>
+  <p class="section-desc">Three simple steps. No agents. No code changes. No risk.</p>
+  <div class="steps-grid">
+    <div class="step-card">
+      <div class="step-num">01</div>
+      <div class="step-icon">☁️</div>
+      <div class="step-title">Connect Your AWS</div>
+      <div class="step-desc">Link Cloud Thrift to your AWS account via a read-only IAM role. We use AWS Organizations for multi-account setups. No credentials stored — ever.</div>
+      <div class="step-badge">⏱ Takes 90 seconds</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">02</div>
+      <div class="step-icon">🤖</div>
+      <div class="step-title">AI Analysis</div>
+      <div class="step-desc">Our Lambda bot scans EC2, RDS, EBS, ELB, and Lambda usage. Finds idle resources, over-provisioned instances, unattached volumes, and forgotten snapshots.</div>
+      <div class="step-badge">⚡ First report in minutes</div>
+    </div>
+    <div class="step-card">
+      <div class="step-num">03</div>
+      <div class="step-icon">✨</div>
+      <div class="step-title">Auto-Optimize</div>
+      <div class="step-desc">Cloud Thrift rightsizes instances, schedules on/off for dev environments, deletes waste, and applies Reserved Instance recommendations. You approve or set to fully automatic.</div>
+      <div class="step-badge">✅ Savings start immediately</div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="section-label">FEATURES</div>
+  <h2 class="section-title">Every Dollar of Waste. Hunted Down.</h2>
+  <p class="section-desc">Six powerful modules working 24/7 to find and eliminate cloud spend you don't need.</p>
+  <div class="features-grid">
+    <div class="feat-card">
+      <div class="feat-icon">🎯</div>
+      <div class="feat-title">Idle Resource Hunter</div>
+      <div class="feat-desc">Detects EC2 instances with less than 5% CPU utilization over 14 days. Flags, notifies, and optionally terminates with one click.</div>
+      <span class="feat-tag">EC2 · RDS · ELB</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📅</div>
+      <div class="feat-title">Smart Scheduler</div>
+      <div class="feat-desc">Auto-stops dev and staging resources nights and weekends. Configurable schedules per environment tag. Saves up to 65% on non-prod spend.</div>
+      <span class="feat-tag">Dev · Staging · QA</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">⚖️</div>
+      <div class="feat-title">Rightsizing Engine</div>
+      <div class="feat-desc">Recommends optimal instance types based on 30-day usage patterns. Supports EC2, RDS, ElastiCache, and OpenSearch with confidence scoring.</div>
+      <span class="feat-tag">ML-Powered</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🐷</div>
+      <div class="feat-title">Reserved Instance Planner</div>
+      <div class="feat-desc">Analyzes your on-demand usage and recommends RI and Savings Plan purchases. Saves up to 72% compared to on-demand pricing with zero risk.</div>
+      <span class="feat-tag">RI · Savings Plans</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🗑️</div>
+      <div class="feat-title">EBS Janitor</div>
+      <div class="feat-desc">Finds and safely deletes unattached EBS volumes, old snapshots, and orphaned AMIs. Creates a backup before deletion — always. Zero data loss guaranteed.</div>
+      <span class="feat-tag">EBS · Snapshots · AMI</span>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📊</div>
+      <div class="feat-title">Real-time Dashboard</div>
+      <div class="feat-desc">Live cost tracking, savings projections, and anomaly detection. Get Slack/email alerts when spend spikes unexpectedly. Full audit trail included.</div>
+      <span class="feat-tag">Slack · Email · API</span>
+    </div>
+  </div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section id="arch">
+  <div class="section-label">ARCHITECTURE</div>
+  <h2 class="section-title">Serverless. Secure. Scalable.</h2>
+  <p class="section-desc">Built entirely on AWS Lambda — no servers to manage, no agents to install, no attack surface.</p>
+  <div class="arch-diagram">
+    <div class="arch-row">
+      <div class="arch-box">
+        <div class="arch-box-icon">☁️</div>
+        <div class="arch-box-title">AWS Accounts</div>
+        <div class="arch-box-sub">Multi-account via Org</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-box">
+        <div class="arch-box-icon">🔔</div>
+        <div class="arch-box-title">CloudWatch</div>
+        <div class="arch-box-sub">EventBridge Rules</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-box center">
+        <div class="arch-box-icon">⚡</div>
+        <div class="arch-box-title">Cloud Thrift</div>
+        <div class="arch-box-sub">Lambda Engine</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-box">
+        <div class="arch-box-icon">💰</div>
+        <div class="arch-box-title">Cost Explorer</div>
+        <div class="arch-box-sub">Billing API</div>
+      </div>
+      <div class="arch-arrow">→</div>
+      <div class="arch-box">
+        <div class="arch-box-icon">💡</div>
+        <div class="arch-box-title">Recommendations</div>
+        <div class="arch-box-sub">AI-scored actions</div>
+      </div>
+    </div>
+    <div class="arch-col">
+      <div class="arch-arrow" style="transform:rotate(90deg)">→</div>
+      <div class="arch-box">
+        <div class="arch-box-icon">✅</div>
+        <div class="arch-box-title">Approval Flow</div>
+        <div class="arch-box-sub">Slack / Email</div>
+      </div>
+      <div class="arch-arrow" style="transform:rotate(90deg)">→</div>
+      <div class="arch-box">
+        <div class="arch-box-icon">✨</div>
+        <div class="arch-box-title">Auto-Fix</div>
+        <div class="arch-box-sub">Fully Automated</div>
+      </div>
+    </div>
+    <div class="arch-legend">
+      <div class="arch-legend-item"><div class="legend-line"></div> Encrypted data flow</div>
+      <div class="arch-legend-item"><div class="legend-dot"></div> Cloud Thrift Lambda core</div>
+      <div class="arch-legend-item"><span class="legend-lock">🔒</span> Read-only IAM — no write access by default</div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing">
+  <div class="section-label">PRICING</div>
+  <h2 class="section-title">Pay Less. Save More.</h2>
+  <p class="section-desc">Cloud Thrift pays for itself within the first week. Guaranteed.</p>
+  <div class="pricing-grid">
+    <div class="pricing-card">
+      <div class="plan-name">Free Tier</div>
+      <div class="plan-price">$0 <span>/ month</span></div>
+      <div class="plan-limit">Up to $5K monthly AWS spend</div>
+      <ul class="plan-features">
+        <li><span class="check">✓</span> 1 AWS account</li>
+        <li><span class="check">✓</span> Idle resource detection</li>
+        <li><span class="check">✓</span> Weekly email reports</li>
+        <li><span class="check">✓</span> Basic dashboard</li>
+        <li><span class="check">✓</span> Community support</li>
+        <li class="no"><span class="cross">✕</span> Auto-optimization</li>
+        <li class="no"><span class="cross">✕</span> Smart Scheduler</li>
+      </ul>
+      <a href="#" class="plan-btn-outline">Get Started Free</a>
+    </div>
+    <div class="pricing-card popular">
+      <div class="popular-badge">MOST POPULAR</div>
+      <div class="plan-name">Pro</div>
+      <div class="plan-price">$99 <span>/ month</span></div>
+      <div class="plan-limit">Up to $50K monthly AWS spend</div>
+      <ul class="plan-features">
+        <li><span class="check">✓</span> Up to 5 AWS accounts</li>
+        <li><span class="check">✓</span> Full auto-optimization</li>
+        <li><span class="check">✓</span> Smart Scheduler</li>
+        <li><span class="check">✓</span> Rightsizing Engine</li>
+        <li><span class="check">✓</span> RI Planner</li>
+        <li><span class="check">✓</span> EBS Janitor</li>
+        <li><span class="check">✓</span> Slack & email alerts</li>
+        <li><span class="check">✓</span> Priority email support</li>
+      </ul>
+      <a href="#" class="plan-btn-primary">Start 14-Day Free Trial</a>
+    </div>
+    <div class="pricing-card">
+      <div class="plan-name">Enterprise</div>
+      <div class="plan-price" style="font-size:36px">Custom</div>
+      <div class="plan-limit">Unlimited AWS accounts & spend</div>
+      <ul class="plan-features">
+        <li><span class="check">✓</span> Unlimited accounts</li>
+        <li><span class="check">✓</span> Dedicated support engineer</li>
+        <li><span class="check">✓</span> SSO / SAML integration</li>
+        <li><span class="check">✓</span> Custom approval workflows</li>
+        <li><span class="check">✓</span> Private VPC deployment</li>
+        <li><span class="check">✓</span> SLA guarantee</li>
+        <li><span class="check">✓</span> Quarterly cost reviews</li>
+      </ul>
+      <a href="#" class="plan-btn-outline">Contact Sales</a>
+    </div>
+  </div>
+</section>
+
+<!-- TESTIMONIALS -->
+<section id="testimonials">
+  <div class="section-label">TESTIMONIALS</div>
+  <h2 class="section-title">Teams That Stopped Burning Money</h2>
+  <p class="section-desc">Real results from real engineering teams.</p>
+  <div class="testi-grid">
+    <div class="testi-card">
+      <div class="stars">★★★★★</div>
+      <p class="testi-quote">We were spending $34K/month on AWS and had no idea 28% of it was completely idle resources. Cloud Thrift found it in the first scan and cleaned it up automatically. Absolutely mind-blowing ROI.</p>
+      <div class="testi-author">
+        <div class="author-avatar">MK</div>
+        <div>
+          <div class="author-name">Marcus Kim</div>
+          <div class="author-role">VP Engineering, Fintech Startup</div>
+        </div>
+        <div class="author-tag">FNTX</div>
+      </div>
+    </div>
+    <div class="testi-card">
+      <div class="stars">★★★★★</div>
+      <p class="testi-quote">The Smart Scheduler alone saves us $6,200 a month by shutting down dev environments at night. Setup took literally 90 seconds. I wish we'd found Cloud Thrift two years ago.</p>
+      <div class="testi-author">
+        <div class="author-avatar">SR</div>
+        <div>
+          <div class="author-name">Sofia Reyes</div>
+          <div class="author-role">Head of DevOps, SaaS Platform</div>
+        </div>
+        <div class="author-tag">CLVR</div>
+      </div>
+    </div>
+    <div class="testi-card">
+      <div class="stars">★★★★★</div>
+      <p class="testi-quote">Our FinOps team was spending 20 hours a week on manual cost reviews. Cloud Thrift automated all of it and found 34% savings we'd completely missed. It's like hiring a full-time cloud economist.</p>
+      <div class="testi-author">
+        <div class="author-avatar">JT</div>
+        <div>
+          <div class="author-name">James Thornton</div>
+          <div class="author-role">CTO, E-commerce Scale-up</div>
+        </div>
+        <div class="author-tag">SHPX</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+  <div class="section-label">FAQ</div>
+  <h2 class="section-title">Everything You Need to Know</h2>
+  <p class="section-desc">Questions about security, permissions, and how it all works.</p>
+  <div class="faq-list">
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">Is Cloud Thrift secure? What access does it need to my AWS account? <div class="faq-icon">+</div></div>
+      <div class="faq-a">Cloud Thrift connects via a read-only IAM role by default — we cannot make any changes to your infrastructure unless you explicitly enable auto-fix mode. All data is encrypted in transit and at rest. We are SOC 2 Type II certified and GDPR compliant. No credentials are ever stored on our servers.</div>
+    </div>
+    <div class="faq-item open" onclick="toggleFaq(this)">
+      <div class="faq-q">What IAM permissions does Cloud Thrift require? <div class="faq-icon">+</div></div>
+      <div class="faq-a">For read-only analysis: <code>ReadOnlyAccess</code> managed policy is sufficient. For auto-optimization, we provide a minimal custom policy that grants only the specific permissions needed: ec2:StopInstances, ec2:DeleteVolume (with conditions), rds:StopDBInstance, etc. We publish our exact IAM policy JSON on GitHub so you can audit every permission before granting it. The principle of least privilege is baked into our design.</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">Can I roll back changes made by Cloud Thrift? <div class="faq-icon">+</div></div>
+      <div class="faq-a">Yes. Every action Cloud Thrift takes is logged with full audit trail. For destructive actions (like deleting EBS volumes), we always create a backup first. You can roll back any action within 30 days. For instance stops, just start them again — Cloud Thrift never terminates instances without explicit approval.</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">How is the ~30% savings figure calculated? <div class="faq-icon">+</div></div>
+      <div class="faq-a">The 31% average is based on aggregate data across 2,400+ connected AWS accounts over 12 months. Individual results vary based on your workload type, how much you've already optimized, and which features you enable. Most teams see 15–45% reduction. We show you a projected savings estimate during onboarding before any changes are made.</div>
+    </div>
+    <div class="faq-item" onclick="toggleFaq(this)">
+      <div class="faq-q">What support options are available? <div class="faq-icon">+</div></div>
+      <div class="faq-a">Free tier gets community forum support. Pro plan includes priority email support with 24-hour response SLA. Enterprise customers get a dedicated support engineer, Slack Connect channel, and quarterly cost optimization reviews. All plans have access to our documentation, API reference, and status page.</div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a href="#" class="nav-logo" style="display:inline-flex">
+          <div class="nav-logo-icon">🚀</div>
+          <div class="nav-logo-text">Cloud <span>Thrift</span></div>
+        </a>
+        <p>The AWS Lambda bot that automatically cuts your cloud costs by ~30%. Serverless, secure, and always-on.</p>
+        <div class="footer-socials">
+          <a href="#" class="social-btn">𝕏</a>
+          <a href="#" class="social-btn">in</a>
+          <a href="#" class="social-btn">⌥</a>
+          <a href="#" class="social-btn">▶</a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Product</div>
+        <a href="#features">Features</a>
+        <a href="#how">How It Works</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#arch">Architecture</a>
+        <a href="#">Changelog</a>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Resources</div>
+        <a href="#">Documentation</a>
+        <a href="#">API Reference</a>
+        <a href="#">Blog</a>
+        <a href="#">Case Studies</a>
+        <a href="#">Status Page</a>
+      </div>
+      <div class="footer-col">
+        <div class="footer-col-title">Company</div>
+        <a href="#">About Us</a>
+        <a href="#">Careers</a>
+        <a href="#">Security</a>
+        <a href="#">Privacy Policy</a>
+        <a href="#">Terms of Service</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="footer-copy">© 2025 Cloud Thrift, Inc. All rights reserved. Not affiliated with Amazon Web Services.</div>
+      <div class="footer-badges">
+        <span class="badge-pill">SOC 2 Type II</span>
+        <span class="badge-pill">GDPR Compliant</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // FAQ toggle
+  function toggleFaq(el) {
+    el.classList.toggle('open');
+  }
+
+  // Counter animation
+  function animateCounter() {
+    const el = document.getElementById('counter');
+    const target = 12848543;
+    const start = target - 50000;
+    let current = start;
+    const step = Math.ceil((target - start) / 60);
+    const timer = setInterval(() => {
+      current = Math.min(current + step, target);
+      el.textContent = '$' + current.toLocaleString();
+      if (current >= target) clearInterval(timer);
+    }, 30);
+  }
+  // Simulate live counter incrementing slowly
+  setInterval(() => {
+    const el = document.getElementById('counter');
+    const val = parseInt(el.textContent.replace(/[$,]/g, ''));
+    el.textContent = '$' + (val + Math.floor(Math.random() * 8 + 2)).toLocaleString();
+  }, 3000);
+
+  animateCounter();
+</script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+{
+  "Comment": "CloudWatch EventBridge rule — triggers Cloud Thrift Lambda every night at 2 AM UTC",
+  "Rule": {
+    "Name": "cloud-thrift-nightly-audit",
+    "ScheduleExpression": "cron(0 2 * * ? *)",
+    "State": "ENABLED",
+    "Description": "Nightly Cloud Thrift cost-audit Lambda trigger"
+  },
+  "Target": {
+    "Id": "CloudThriftLambda",
+    "Arn": "arn:aws:lambda:us-east-1:ACCOUNT_ID:function:cloud-thrift-audit",
+    "Input": "{\"source\": \"eventbridge-scheduled\", \"dry_run\": false}"
+  },
+  "IAMPolicy": {
+    "Effect": "Allow",
+    "Action": [
+      "ec2:DescribeInstances",
+      "ec2:DescribeVolumes",
+      "ec2:DescribeSnapshots",
+      "ec2:StopInstances",
+      "ec2:StartInstances",
+      "ec2:DeleteVolume",
+      "ec2:CreateSnapshot",
+      "ec2:DeleteSnapshot",
+      "cloudwatch:GetMetricStatistics",
+      "ce:GetCostAndUsage",
+      "rds:DescribeDBInstances",
+      "rds:StopDBInstance",
+      "sns:Publish",
+      "sts:GetCallerIdentity"
+    ],
+    "Resource": "*",
+    "Condition": {
+      "StringEquals": {
+        "aws:RequestedRegion": "us-east-1"
+      }
+    }
+  }
+}
