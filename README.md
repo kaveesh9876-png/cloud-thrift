@@ -27,34 +27,6 @@ Every night at 2 AM UTC, it automatically:
 
 ---
 
-## 🖥️ Screenshots
-
-### Hero — Landing Page
-![Hero](assets/screenshots/01-hero.png)
-
-### How It Works
-![How It Works](assets/screenshots/02-how-it-works.png)
-
-### Features
-![Features](assets/screenshots/03-features.png)
-
-### Architecture
-![Architecture](assets/screenshots/04-architecture.png)
-
-### Pricing
-![Pricing](assets/screenshots/05-pricing.png)
-
-### Testimonials
-![Testimonials](assets/screenshots/06-testimonials.png)
-
-### FAQ
-![FAQ](assets/screenshots/07-faq.png)
-
-### Footer
-![Footer](assets/screenshots/08-footer.png)
-
----
-
 ## 🏗️ Architecture
 
 ```
@@ -84,16 +56,6 @@ CloudWatch EventBridge  ──(cron: 0 2 * * ? *)──▶  Lambda (handler.py)
 
 ```
 cloud-thrift/
-├── assets/
-│   └── screenshots/
-│       ├── 01-hero.png
-│       ├── 02-how-it-works.png
-│       ├── 03-features.png
-│       ├── 04-architecture.png
-│       ├── 05-pricing.png
-│       ├── 06-testimonials.png
-│       ├── 07-faq.png
-│       └── 08-footer.png
 ├── lambda/
 │   ├── handler.py               # Lambda entry point
 │   └── eventbridge_rule.json    # CloudWatch trigger config + IAM policy
@@ -104,7 +66,6 @@ cloud-thrift/
 │   │   └── cost_reporter.py     # Cost Explorer + savings estimator
 │   └── scheduler/
 │       └── smart_scheduler.py   # Env-tag-based start/stop scheduler
-├── index.html
 ├── requirements.txt
 └── README.md
 ```
@@ -116,7 +77,7 @@ cloud-thrift/
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/kaveesh9876-png/cloud-thrift.git
+git clone https://github.com/YOUR_USERNAME/cloud-thrift.git
 cd cloud-thrift
 pip install -r requirements.txt
 ```
